@@ -102,8 +102,8 @@ flowchart TD
 
 O projeto é executado de forma incremental e orientada a entregas bem definidas:
 
-- [ ] **Entrega 0: Product Definition & Architecture** (Em revisão)
-- [ ] **Entrega 1: Backend Foundation** (Ambiente, dependências com `uv`, FastAPI base, SQLAlchemy 2, migrations Alembic, `pydantic-settings`, `mypy` e `ruff`)
+- [x] **Entrega 0: Product Definition & Architecture** (Concluída e publicada)
+- [ ] **Entrega 1: Backend Foundation** (Em revisão humana — ambiente, dependências com `uv`, FastAPI base, SQLAlchemy 2, migrations Alembic, `pydantic-settings`, `mypy` e `ruff`)
 - [ ] **Entrega 2: Review Management & Ingestion** (Parsing de CSV com `source_system`, validação e persistência de avaliações com auditoria de `ImportJob`)
 - [ ] **Entrega 3: AI Analysis** (Integração Gemini com Structured Outputs, histórico por configuração ativa `(provider, model, prompt)`, ciclo de reserva com locks efêmeros e recuperação de análises abandonadas)
 - [ ] **Entrega 4: Embeddings & RAG** (Integração local de `multilingual-e5-small`, execução em thread pool, rastreabilidade de `model_revision` e busca vetorial com pgvector)
@@ -127,3 +127,104 @@ Aprofunde-se nos detalhes de engenharia e produto nos documentos dedicados:
   - [ADR-0002: Gradio Blocks como Camada de Apresentação](docs/adr/ADR-0002-gradio-presentation.md)
   - [ADR-0003: PostgreSQL com pgvector para Dados Relacionais e Vetoriais](docs/adr/ADR-0003-postgresql-pgvector.md)
   - [ADR-0004: Integração de Provedores de IA Desacoplada](docs/adr/ADR-0004-ai-provider-abstraction.md)
+
+---
+
+## 8. Estado Atual e Execução Local (Entrega 1)
+
+A Entrega 1 deixou a base do backend executável: pacote Python `mesaiq`, FastAPI com
+Application Factory, configuração centralizada, PostgreSQL 16 com pgvector via Docker
+Compose, SQLAlchemy 2 assíncrono, Alembic e os endpoints de health check. A importação
+de CSV, IA, embeddings, chatbot e Gradio ainda **não** fazem parte deste estado.
+
+### 8.1 Pré-requisitos
+
+- Python 3.12
+- [uv](https://docs.astral.sh/uv/)
+- Docker com Docker Compose
+
+### 8.2 Configuração do ambiente
+
+```bash
+cp .env.example .env
+uv sync
+```
+
+O arquivo `.env` é local e não deve ser versionado. As variáveis da aplicação usam o
+prefixo `MESAIQ_`; a URL do banco deve obrigatoriamente usar o driver assíncrono
+`postgresql+asyncpg://`.
+
+### 8.3 PostgreSQL
+
+```bash
+docker compose up -d postgres
+docker compose ps
+```
+
+O PostgreSQL fica exposto em `localhost:5433` por padrão (porta configurável por
+`POSTGRES_PORT`). O volume `postgres_data` preserva os dados entre reinicializações.
+Não use `docker compose down -v` sem autorização explícita, pois isso apaga o volume.
+
+### 8.4 Migrations
+
+```bash
+uv run alembic upgrade head
+uv run alembic current
+```
+
+A primeira migration habilita a extensão `vector` e cria `restaurants`, `reviews` e
+`import_jobs`. O schema evolui exclusivamente por migrations Alembic; não há
+`create_all()` no fluxo da aplicação.
+
+### 8.5 Executando o FastAPI
+
+```bash
+uv run uvicorn mesaiq.main:create_app --factory --reload
+```
+
+A documentação interativa fica em `http://127.0.0.1:8000/docs`.
+
+### 8.6 Health checks
+
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+# {"status":"ok","service":"mesaiq"}
+
+curl http://127.0.0.1:8000/api/v1/health/ready
+# {"status":"ready","service":"mesaiq","database":"ok"}
+```
+
+`/health` é o liveness (processo no ar). `/health/ready` é o readiness e executa
+`SELECT 1`; se o PostgreSQL estiver indisponível, responde HTTP 503 sem expor
+credenciais ou detalhes internos.
+
+### 8.7 Qualidade e testes
+
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src
+uv run pytest
+```
+
+Os testes padrão não exigem um banco em execução. Para incluir o teste de integração
+real contra PostgreSQL:
+
+```bash
+MESAIQ_TEST_DATABASE_URL='postgresql+asyncpg://mesaiq:local_password@localhost:5433/mesaiq' \
+  uv run pytest -m integration
+```
+
+### 8.8 Organização do pacote
+
+```text
+src/mesaiq/
+├── api/                         # Routers FastAPI (health)
+├── infrastructure/database/     # Base, ORM models, engine e sessões assíncronas
+├── config.py                    # pydantic-settings (prefixo MESAIQ_)
+└── main.py                      # create_app() e entry point
+```
+
+Os modelos ORM vivem em `infrastructure/database/models.py` e **não** são entidades de
+domínio. As camadas `domain`, `application` e `presentation` serão preenchidas nas
+próximas entregas, preservando o isolamento descrito em `docs/ARCHITECTURE.md`.
