@@ -1,8 +1,10 @@
 # Arquitetura do Sistema — MesaIQ
 
-**Versão:** 1.1  
-**Status:** Em revisão humana  
-**Responsável pelo Projeto:** Desenvolvedor do Projeto (Estudante de Ciência da Computação)  
+**Versão:** 1.2
+
+**Status:** Em revisão humana (Entrega 1)
+
+**Responsável pelo Projeto:** Desenvolvedor do Projeto (Estudante de Ciência da Computação)
 
 ---
 
@@ -14,13 +16,13 @@ O **MesaIQ** adota o padrão de **Monólito Modular** guiado pelos princípios d
 
 ```mermaid
 flowchart TB
-    subgraph PresentationLayer["Presentation Layer (src/presentation/)"]
+    subgraph PresentationLayer["Presentation Layer (src/mesaiq/api/ e src/mesaiq/presentation/)"]
         direction TB
         GradioApp["Gradio Blocks UI (/app)\n- Chatbot com Citações Verificadas\n- Analytics Dashboard\n- CSV Ingestion & ImportJob View"]
         FastAPIRouter["FastAPI Application\n- Mounts Gradio on /app\n- REST Health & API Endpoints"]
     end
 
-    subgraph ApplicationLayer["Application Layer (src/application/)"]
+    subgraph ApplicationLayer["Application Layer (src/mesaiq/application/)"]
         direction TB
         subgraph UseCases["Use Cases"]
             UC_Import["ImportReviewsUseCase"]
@@ -41,13 +43,13 @@ flowchart TB
         end
     end
 
-    subgraph DomainLayer["Domain Layer (src/domain/)"]
+    subgraph DomainLayer["Domain Layer (src/mesaiq/domain/)"]
         direction TB
         Entities["Domain Models & Enums\n- Restaurant\n- Review (reviewed_at, imported_at)\n- ReviewAnalysis (Status: PENDING, PROCESSING, COMPLETED, FAILED)\n- ReviewAspect\n- ReviewEmbedding\n- ImportJob (rows_imported, rows_skipped, rows_rejected)\n- ChatSession & ChatMessage"]
         ValueObjects["Value Objects & Exceptions"]
     end
 
-    subgraph InfrastructureLayer["Infrastructure Layer (src/infrastructure/)"]
+    subgraph InfrastructureLayer["Infrastructure Layer (src/mesaiq/infrastructure/)"]
         direction TB
         subgraph AIAdapters["AI & ML Adapters"]
             GeminiAdapter["GeminiLLMAdapter\n(google-genai SDK + Structured Outputs)"]
@@ -197,14 +199,14 @@ erDiagram
    -- 3. Análises em status FAILED com attempt_count < :max_attempts
    SELECT r.id, r.restaurant_id, r.content, ra.id AS analysis_id, COALESCE(ra.attempt_count, 0) AS current_attempts
    FROM reviews r
-   LEFT JOIN review_analyses ra 
-       ON r.id = ra.review_id 
-       AND ra.provider_name = :active_provider 
-       AND ra.model_name = :active_model 
+   LEFT JOIN review_analyses ra
+       ON r.id = ra.review_id
+       AND ra.provider_name = :active_provider
+       AND ra.model_name = :active_model
        AND ra.prompt_version = :active_prompt_version
-   WHERE r.restaurant_id = :restaurant_id 
+   WHERE r.restaurant_id = :restaurant_id
      AND (
-         ra.id IS NULL 
+         ra.id IS NULL
          OR ra.status = 'PENDING'
          OR (ra.status = 'FAILED' AND ra.attempt_count < :max_attempts)
      )
@@ -254,7 +256,7 @@ erDiagram
    ```sql
    SELECT ra.*
    FROM review_analyses ra
-   WHERE ra.review_id = :review_id 
+   WHERE ra.review_id = :review_id
      AND ra.provider_name = :active_provider
      AND ra.model_name = :active_model
      AND ra.prompt_version = :active_prompt_version
@@ -373,7 +375,7 @@ sequenceDiagram
     ChatUI->>UC_Chat: execute(message, session_id)
     UC_Chat->>UC_Chat: Injetar restaurant_id da sessão ativa (não confiado ao modelo)
     UC_Chat->>LLM: generate_chat_response(prompt, history, registered_tools)
-    
+
     alt Modelo emite solicitação de ferramenta
         LLM-->>UC_Chat: ToolCallRequest(tool_name="search_reviews", arguments={...})
         UC_Chat->>Tools: execute(tool_name, validated_args)
@@ -404,78 +406,99 @@ sequenceDiagram
 
 | Camada | Diretório | Responsabilidade | Regra de Dependência |
 |---|---|---|---|
-| **Domain** | `src/domain/` | Entidades puras, Dataclasses nativas, Enums, Value Objects e regras invariantes do negócio. | Depende exclusivamente da biblioteca padrão do Python (`dataclasses`, `enum`, `typing`, `datetime`, `uuid`). Não depende de Pydantic, SQLAlchemy, FastAPI, Gradio ou provedores de IA. |
-| **Application** | `src/application/` | Casos de uso, DTOs e esquemas de validação Pydantic v2, contratos de interfaces (*Protocols* em `typing`) e serviços de aplicação (ex.: `CitationVerifierService`). | Não depende de frameworks web (FastAPI/Gradio) nem de adaptadores concretos de infraestrutura. |
-| **Infrastructure** | `src/infrastructure/` | Adaptadores concretos: persistência SQLAlchemy 2, Alembic, cliente Gemini via `google-genai`, embeddings locais em thread pool e parser CSV. | Implementa as portas definidas na camada de aplicação e encapsula SDKs e bancos externos. |
-| **Presentation** | `src/presentation/` | Componentes Gradio Blocks, rotas REST do FastAPI e formatação de saídas para o usuário. | Delega chamadas unicamente aos Casos de Uso da camada de aplicação. Não acessa o banco nem provedores diretamente. |
+| **Domain** | `src/mesaiq/domain/` | Entidades puras, Dataclasses nativas, Enums, Value Objects e regras invariantes do negócio. | Depende exclusivamente da biblioteca padrão do Python (`dataclasses`, `enum`, `typing`, `datetime`, `uuid`). Não depende de Pydantic, SQLAlchemy, FastAPI, Gradio ou provedores de IA. |
+| **Application** | `src/mesaiq/application/` | Casos de uso, DTOs e esquemas de validação Pydantic v2, contratos de interfaces (*Protocols* em `typing`) e serviços de aplicação (ex.: `CitationVerifierService`). | Não depende de frameworks web (FastAPI/Gradio) nem de adaptadores concretos de infraestrutura. |
+| **Infrastructure** | `src/mesaiq/infrastructure/` | Adaptadores concretos: persistência SQLAlchemy 2, Alembic, cliente Gemini via `google-genai`, embeddings locais em thread pool e parser CSV. | Implementa as portas definidas na camada de aplicação e encapsula SDKs e bancos externos. |
+| **Presentation** | `src/mesaiq/api/` (REST) e `src/mesaiq/presentation/` (Gradio, futuro) | Componentes Gradio Blocks, rotas REST do FastAPI e formatação de saídas para o usuário. | Delega chamadas unicamente aos Casos de Uso da camada de aplicação. Não acessa o banco nem provedores diretamente. |
 
 ---
 
-## 5. Estrutura de Diretórios Planejada
+## 5. Estrutura de Diretórios
+
+### 5.1 Estrutura implementada na Entrega 1
+
+O projeto adota **src layout** com um pacote instalável chamado `mesaiq`. O diretório
+`src/` não é um pacote Python; o código importável fica exclusivamente em
+`src/mesaiq/`.
 
 ```text
 mesaiq/
-├── AGENTS.md                          # Instruções mandatórias para desenvolvimento
-├── README.md                          # Apresentação do sistema e visão geral
-├── pyproject.toml                     # Configuração de dependências via uv
-├── .gitignore                         # Arquivos ignorados pelo controle de versão
-├── docs/                              # Documentação de engenharia e produto
-│   ├── PRD.md                         # Requisitos funcionais, não funcionais e personas
-│   ├── ARCHITECTURE.md                # Desenho arquitetural, diagramas e contratos
-│   ├── ROADMAP.md                     # Cronograma de entregas incrementais
-│   └── adr/                           # Architecture Decision Records
-│       ├── ADR-0001-modular-monolith.md
-│       ├── ADR-0002-gradio-presentation.md
-│       ├── ADR-0003-postgresql-pgvector.md
-│       └── ADR-0004-ai-provider-abstraction.md
-├── src/                               # Código-fonte da aplicação
-│   ├── __init__.py
-│   ├── domain/                        # Entidades e enums puros
-│   │   ├── __init__.py
-│   │   ├── entities.py                # Restaurant, Review, ReviewAnalysis, etc.
-│   │   └── enums.py                   # Sentiment, AspectCategory, JobStatus, AnalysisStatus
-│   ├── application/                   # Casos de uso e portas
-│   │   ├── __init__.py
-│   │   ├── ports/                     # Contratos abstratos (Protocols)
-│   │   │   ├── llm_provider.py
-│   │   │   ├── embedding_provider.py
-│   │   │   └── repositories.py
-│   │   ├── dtos/                      # DTOs Pydantic tipados (LLMResponse, ToolCall, etc.)
-│   │   ├── services/                  # Serviços de aplicação (CitationVerifierService)
-│   │   └── use_cases/                 # Implementação das regras de negócio
-│   │       ├── import_reviews.py
-│   │       ├── process_pending_reviews.py
-│   │       ├── get_review_metrics.py
-│   │       ├── search_reviews.py
-│   │       └── chat_assistant.py
-│   ├── infrastructure/                # Adaptadores de I/O e terceiros
-│   │   ├── __init__.py
-│   │   ├── config.py                  # Pydantic Settings para variáveis de ambiente
-│   │   ├── database/                  # Engine SQLAlchemy 2 e sessões
-│   │   ├── repositories/              # Repositórios concretos SQLAlchemy
-│   │   ├── ai/                        # Adaptadores de Gemini e Embeddings locais
-│   │   │   ├── gemini_adapter.py
-│   │   │   └── e5_embedding_adapter.py
-│   │   └── parsers/                   # Parser de arquivos CSV
-│   └── presentation/                  # Camada de apresentação
+├── AGENTS.md
+├── README.md
+├── pyproject.toml                     # Metadados, dependências e ferramentas
+├── uv.lock                            # Versões resolvidas pelo uv
+├── .python-version                    # Python 3.12
+├── .env.example                       # Template de variáveis locais
+├── .gitignore
+├── alembic.ini                        # URL lida de MESAIQ_DATABASE_URL no env.py
+├── docker-compose.yml                 # PostgreSQL 16 + pgvector
+├── docs/
+│   ├── PRD.md
+│   ├── ARCHITECTURE.md
+│   ├── ROADMAP.md
+│   └── adr/
+├── migrations/
+│   ├── env.py                         # Ambiente assíncrono do Alembic
+│   ├── script.py.mako
+│   └── versions/
+│       └── ffa029986434_create_initial_schema.py
+├── src/
+│   └── mesaiq/
 │       ├── __init__.py
-│       ├── api/                       # Rotas FastAPI
-│       └── web/                       # Interface Gradio Blocks montada sob /app
-│           ├── app.py
-│           ├── chat_view.py
-│           ├── analytics_view.py
-│           └── ingestion_view.py
-└── tests/                             # Suíte automatizada de testes
-    ├── unit/                          # Testes unitários puros
-    ├── integration/                   # Testes de integração (DB, APIs, Schemas)
-    └── conftest.py                    # Fixtures e mocks configurados
+│       ├── config.py                  # pydantic-settings (prefixo MESAIQ_)
+│       ├── main.py                    # create_app() e entry point
+│       ├── api/
+│       │   ├── __init__.py
+│       │   └── health.py              # Liveness e readiness
+│       ├── domain/                    # Reservado para entidades puras futuras
+│       └── infrastructure/
+│           ├── __init__.py
+│           └── database/
+│               ├── __init__.py
+│               ├── base.py            # Base declarativa e naming convention
+│               ├── models.py          # ORM: Restaurant, Review, ImportJob
+│               └── session.py         # Engine, sessionmaker e dependência FastAPI
+└── tests/
+    ├── conftest.py
+    ├── unit/
+    │   ├── test_config.py
+    │   └── test_database_models.py
+    └── integration/
+        ├── test_health.py
+        └── test_readiness.py
 ```
+
+### 5.2 Separação entre ORM e Domain
+
+Os modelos em `src/mesaiq/infrastructure/database/models.py` são **modelos ORM
+SQLAlchemy** e pertencem à infraestrutura. Eles representam tabelas, chaves
+estrangeiras, constraints e índices, e podem depender de SQLAlchemy.
+
+As futuras entidades de `src/mesaiq/domain/` serão dataclasses/enums puros da biblioteca
+padrão, sem SQLAlchemy, Pydantic ou FastAPI. A conversão entre entidades de domínio e
+modelos ORM será responsabilidade dos repositórios da infraestrutura. Nenhuma regra de
+negócio deve ser adicionada aos modelos ORM.
+
+### 5.3 Evolução incremental do pacote
+
+As camadas `application` e `presentation` serão criadas apenas quando suas primeiras
+funcionalidades forem implementadas, mantendo o mesmo pacote raiz:
+
+- `src/mesaiq/application/`: casos de uso, DTOs Pydantic e Protocols (portas).
+- `src/mesaiq/infrastructure/ai/`: adaptadores Gemini e embeddings locais.
+- `src/mesaiq/infrastructure/parsers/`: parser CSV.
+- `src/mesaiq/presentation/web/`: interface Gradio Blocks montada em `/app`.
+
+Essa organização preserva a regra de dependência: Presentation → Application → Domain,
+com Infrastructure implementando as portas da Application. O diretório `api/` atual
+contém apenas rotas de infraestrutura observável (health checks) e não possui regras de
+negócio.
 
 ---
 
 ## 6. Interfaces e Contratos Tipados de IA
 
-A interface de IA não utiliza dicionários genéricos (`list[dict]` ou `dict`). São definidos tipos e DTOs específicos em `src/application/dtos/` e `src/application/ports/`:
+A interface de IA não utiliza dicionários genéricos (`list[dict]` ou `dict`). São definidos tipos e DTOs específicos em `src/mesaiq/application/dtos/` e `src/mesaiq/application/ports/`:
 
 ### 6.1 DTOs Tipados, Enums e Schemas de Ferramentas
 ```python

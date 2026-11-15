@@ -1,8 +1,9 @@
 # Roadmap de Desenvolvimento — MesaIQ
 
-**Versão:** 1.1  
-**Status do Projeto:** Entrega 0 em revisão humana  
-**Responsável pelo Projeto:** Desenvolvedor do Projeto (Estudante de Ciência da Computação)  
+**Versão:** 1.1
+**Status do Projeto:** Entrega 0 concluída e publicada; Entrega 1 em revisão humana
+
+**Responsável pelo Projeto:** Desenvolvedor do Projeto (Estudante de Ciência da Computação)
 
 ---
 
@@ -12,7 +13,7 @@ O desenvolvimento do **MesaIQ** é dividido em 8 etapas incrementais e testávei
 
 ```mermaid
 flowchart LR
-    E0["0. Arquitetura\ne Produto\n(Em revisão)"] --> E1["1. Backend\nFoundation"]
+    E0["0. Arquitetura\ne Produto\n(Concluída)"] --> E1["1. Backend\nFoundation\n(Em revisão)"]
     E1 --> E2["2. Ingestão\n& Dados"]
     E2 --> E3["3. Análise\ncom LLM"]
     E3 --> E4["4. Embeddings\n& RAG"]
@@ -26,7 +27,7 @@ flowchart LR
 ## 2. Detalhamento das Entregas
 
 ### Entrega 0: Product Definition & Architecture
-- **Status:** **EM REVISÃO**
+- **Status:** **CONCLUÍDA E PUBLICADA**
 - **Objetivo:** Estabelecer a base técnica, visão de produto, requisitos funcionais/não funcionais, modelagem de dados revisada, diretrizes de governança e decisões arquiteturais (ADRs).
 - **Tarefas Principais:**
   - [x] Elaborar o `README.md` com proposta de valor, visão geral e diagrama arquitetural.
@@ -40,15 +41,15 @@ flowchart LR
 ---
 
 ### Entrega 1: Backend Foundation
-- **Status:** Planejada (Próxima)
+- **Status:** **EM REVISÃO HUMANA**
 - **Objetivo:** Configurar o ecossistema do projeto com `uv`, FastAPI, validação com `pydantic-settings`, verificação de tipos com `mypy`, formatação/linting com `ruff`, SQLAlchemy 2 assíncrono e controle de versões de banco com Alembic.
 - **Tarefas Principais:**
-  - [ ] Inicializar o `pyproject.toml` e configurar o gerenciador de dependências `uv`.
-  - [ ] Configurar tipagem estrita no `mypy` e linter/formatador no `ruff`.
-  - [ ] Implementar `src/infrastructure/config.py` com validação de variáveis de ambiente via `pydantic-settings`.
-  - [ ] Configurar conexão com PostgreSQL (`asyncpg` / SQLAlchemy 2) e habilitar extensão `vector`.
-  - [ ] Criar a primeira migration no Alembic estabelecendo as tabelas principais (`restaurants`, `reviews`, `import_jobs`) com as chaves estrangeiras e índices B-tree correspondentes.
-  - [ ] Criar endpoint básico de health check no FastAPI (`/api/v1/health`).
+  - [x] Inicializar o `pyproject.toml` e configurar o gerenciador de dependências `uv`.
+  - [x] Configurar tipagem estrita no `mypy` e linter/formatador no `ruff`.
+  - [x] Implementar `src/mesaiq/config.py` com validação de variáveis de ambiente via `pydantic-settings`.
+  - [x] Configurar conexão com PostgreSQL (`asyncpg` / SQLAlchemy 2) e habilitar extensão `vector`.
+  - [x] Criar a primeira migration no Alembic estabelecendo as tabelas principais (`restaurants`, `reviews`, `import_jobs`) com as chaves estrangeiras e índices B-tree correspondentes.
+  - [x] Criar endpoint básico de health check no FastAPI (`/api/v1/health`).
 - **Critério de Conclusão:** Ambiente executando com migrations aplicadas com sucesso no PostgreSQL e testes unitários de configuração passando com `pytest` e checagem do `mypy` sem erros.
 
 ---
