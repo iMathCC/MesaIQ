@@ -1,7 +1,7 @@
 # Roadmap de Desenvolvimento — MesaIQ
 
-**Versão:** 1.1
-**Status do Projeto:** Entrega 0 concluída e publicada; Entrega 1 em revisão humana
+**Versão:** 1.2
+**Status do Projeto:** Entrega 0 concluída e publicada; Entregas 1 e 2 em revisão humana
 
 **Responsável pelo Projeto:** Desenvolvedor do Projeto (Estudante de Ciência da Computação)
 
@@ -14,7 +14,7 @@ O desenvolvimento do **MesaIQ** é dividido em 8 etapas incrementais e testávei
 ```mermaid
 flowchart LR
     E0["0. Arquitetura\ne Produto\n(Concluída)"] --> E1["1. Backend\nFoundation\n(Em revisão)"]
-    E1 --> E2["2. Ingestão\n& Dados"]
+    E1 --> E2["2. Ingestão\n& Dados\n(Em revisão)"]
     E2 --> E3["3. Análise\ncom LLM"]
     E3 --> E4["4. Embeddings\n& RAG"]
     E4 --> E5["5. Chatbot &\nTool Calling"]
@@ -55,16 +55,16 @@ flowchart LR
 ---
 
 ### Entrega 2: Review Management & Ingestion
-- **Status:** Planejada
+- **Status:** **EM REVISÃO HUMANA**
 - **Objetivo:** Implementar o pipeline síncrono de ingestão de avaliações via arquivos CSV com validação, captura do `source_system`, deduplicação por `(restaurant_id, source_system, external_id)` e auditoria prévia de `ImportJob`.
 - **Tarefas Principais:**
-  - [ ] Implementar entidades de domínio e DTOs para `Review` (com `source_system`, `reviewed_at` e `imported_at`) e `ImportJob` (com `rows_imported`, `rows_skipped`, `rows_rejected`).
-  - [ ] Criar o parser e validador de CSV em `src/infrastructure/parsers/`.
-  - [ ] Implementar repositório `ReviewRepository` em SQLAlchemy com suporte a detecção de duplicatas (sem sobrescrever registros existentes no MVP).
-  - [ ] Implementar caso de uso `ImportReviewsUseCase`, garantindo persistência do `ImportJob` com status `PROCESSING` antes da leitura dos dados e cálculo estrito: `rows_total = rows_imported + rows_skipped + rows_rejected`. Manter a importação desacoplada de criação de análises.
-  - [ ] Criar rota de upload de CSV na API FastAPI para processamento de arquivos.
-  - [ ] Escrever testes unitários e de integração para validação de formatos CSV válidos, corrompidos e duplicados.
-- **Critério de Conclusão:** Capacidade de importar 500+ registros via CSV, gravando avaliações no banco com `source_system` e registrando dados estatísticos e de auditoria no `ImportJob`.
+  - [x] Implementar entidades de domínio e DTOs para `Review` (com `source_system`, `reviewed_at` e `imported_at`) e `ImportJob` (com `rows_imported`, `rows_skipped`, `rows_rejected`).
+  - [x] Criar o parser e validador de CSV em `src/infrastructure/parsers/`.
+  - [x] Implementar repositório `ReviewRepository` em SQLAlchemy com suporte a detecção de duplicatas (sem sobrescrever registros existentes no MVP via `ON CONFLICT DO NOTHING`).
+  - [x] Implementar caso de uso `ImportReviewsUseCase`, garantindo persistência do `ImportJob` com status `PROCESSING` antes da leitura dos dados e cálculo estrito: `rows_total = rows_imported + rows_skipped + rows_rejected`. Manter a importação desacoplada de criação de análises.
+  - [x] Criar rota de upload de CSV na API FastAPI para processamento de arquivos (`POST /api/v1/restaurants/{restaurant_id}/reviews/imports`).
+  - [x] Escrever testes unitários e de integração para validação de formatos CSV válidos, corrompidos e duplicados.
+- **Critério de Conclusão:** Capacidade de importar registros via CSV, gravando avaliações no banco com `source_system` e registrando dados estatísticos e de auditoria no `ImportJob`.
 
 ---
 

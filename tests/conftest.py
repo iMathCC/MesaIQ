@@ -7,7 +7,7 @@ from pydantic import SecretStr
 
 from mesaiq.config import Settings, get_settings
 
-TEST_DATABASE_URL = "postgresql+asyncpg://mesaiq:local_password@localhost:5433/mesaiq"
+TEST_DATABASE_URL = "postgresql+asyncpg://mesaiq:local_password@localhost:5433/mesaiq_test"
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,7 @@
-"""Domain entities — pure Python dataclasses and enums.
+"""Domain entities package."""
 
-Rules:
-- Depends ONLY on Python stdlib (dataclasses, enum, uuid, datetime, typing).
-- No Pydantic, SQLAlchemy, FastAPI, or any third-party library.
-"""
+from mesaiq.domain.entities.import_job import ImportJob
+from mesaiq.domain.entities.restaurant import Restaurant
+from mesaiq.domain.entities.review import Review
+
+__all__ = ["ImportJob", "Restaurant", "Review"]

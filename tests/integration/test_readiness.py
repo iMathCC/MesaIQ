@@ -12,6 +12,7 @@ from sqlalchemy.exc import OperationalError
 from mesaiq.config import Settings
 from mesaiq.infrastructure.database.session import get_db_session
 from mesaiq.main import create_app
+from tests.database_guard import validate_test_database_url
 
 
 class HealthySession:
@@ -58,9 +59,7 @@ def test_readiness_returns_503_when_database_fails(settings: Settings) -> None:
 
 @pytest.mark.integration
 def test_readiness_against_real_database() -> None:
-    database_url = os.getenv("MESAIQ_TEST_DATABASE_URL")
-    if not database_url:
-        pytest.skip("MESAIQ_TEST_DATABASE_URL is not set")
+    database_url = validate_test_database_url(os.getenv("MESAIQ_TEST_DATABASE_URL"))
 
     settings = Settings(  # type: ignore[call-arg]
         _env_file=None,

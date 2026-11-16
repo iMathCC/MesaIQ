@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from mesaiq.api.health import router as health_router
+from mesaiq.api.routes.review_imports import router as review_imports_router
 from mesaiq.config import Settings, get_settings
 from mesaiq.infrastructure.database.session import create_engine, create_session_factory
 
@@ -47,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(health_router, prefix="/api/v1")
+    app.include_router(review_imports_router, prefix="/api/v1")
     return app
 
 

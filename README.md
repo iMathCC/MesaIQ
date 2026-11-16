@@ -198,7 +198,61 @@ curl http://127.0.0.1:8000/api/v1/health/ready
 `SELECT 1`; se o PostgreSQL estiver indisponível, responde HTTP 503 sem expor
 credenciais ou detalhes internos.
 
-### 8.7 Qualidade e testes
+### 8.7 Ingestão de Avaliações por CSV (Entrega 2)
+
+O endpoint de ingestão permite carregar lotes de avaliações para um restaurante existente:
+
+```bash
+POST /api/v1/restaurants/{restaurant_id}/reviews/imports
+Content-Type: multipart/form-data
+```
+
+#### Contrato do CSV
+O arquivo deve ser codificado em UTF-8 (com ou sem BOM), ter extensão `.csv`, tamanho máximo de 10 MB (configurável via `MESAIQ_MAX_UPLOAD_SIZE_BYTES`) e conter o cabeçalho:
+
+```csv
+source_system,external_id,rating,content,reviewed_at
+google,review-001,5,"Excelente atendimento e comida!",2026-10-12T14:30:00
+ifood,review-002,2,"O pedido chegou frio.",2026-10-13T19:15:00
+```
+
+#### Regras de Negócio e Validação:
+- **Tolerância a falhas parciais**: Registros com rating fora do intervalo [1, 5], campos obrigatórios vazios ou datas inválidas são rejeitados individualmente sem abortar a importação dos demais.
+- **Deduplicação de 2 níveis**:
+  1. *Intra-arquivo*: O primeiro registro de `(source_system, external_id)` é aceito; repetições seguintes no mesmo CSV são contabilizadas como `skipped`.
+  2. *PostgreSQL*: Registros já existentes no banco são preservados intactos via `ON CONFLICT DO NOTHING` e contabilizados como `skipped`.
+- **Auditoria Transacional com ImportJob**:
+  - O job é persistido com status `PROCESSING` em transação inicial antes do parsing.
+  - Ao final do processamento, o job é atualizado para `COMPLETED` (ou `FAILED` se o arquivo for estruturalmente inválido).
+  - Invariante estrita: `rows_total = rows_imported + rows_skipped + rows_rejected`.
+
+#### Exemplo de Requisição:
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/restaurants/<RESTAURANT_UUID>/reviews/imports" \
+  -F "file=@reviews.csv"
+```
+
+#### Exemplo de Resposta (HTTP 201 Created):
+```json
+{
+  "import_job_id": "b3f07a2a-7e61-4c12-9c9e-591eef9bb981",
+  "status": "COMPLETED",
+  "rows_total": 4,
+  "rows_imported": 2,
+  "rows_skipped": 1,
+  "rows_rejected": 1,
+  "errors": [
+    {
+      "line": 4,
+      "field": "rating",
+      "reason": "rating must be an integer, got 'invalid'"
+    }
+  ],
+  "error_summary": null
+}
+```
+
+### 8.8 Qualidade e testes
 
 ```bash
 uv run ruff check .
@@ -207,24 +261,22 @@ uv run mypy src
 uv run pytest
 ```
 
-Os testes padrão não exigem um banco em execução. Para incluir o teste de integração
-real contra PostgreSQL:
+Os testes padrão incluem dublês e testes unitários independentes. Para incluir os testes de integração
+reais contra o PostgreSQL:
 
 ```bash
 MESAIQ_TEST_DATABASE_URL='postgresql+asyncpg://mesaiq:local_password@localhost:5433/mesaiq' \
   uv run pytest -m integration
 ```
 
-### 8.8 Organização do pacote
+### 8.9 Organização do pacote
 
 ```text
 src/mesaiq/
-├── api/                         # Routers FastAPI (health)
-├── infrastructure/database/     # Base, ORM models, engine e sessões assíncronas
+├── api/                         # Routers FastAPI (health, review_imports)
+├── application/                 # Use cases, DTOs Pydantic e Protocols (Ports)
+├── domain/                      # Entidades puras (Restaurant, Review, ImportJob), enums e exceções
+├── infrastructure/              # Repositórios SQLAlchemy, UnitOfWork e CsvReviewParser
 ├── config.py                    # pydantic-settings (prefixo MESAIQ_)
 └── main.py                      # create_app() e entry point
 ```
-
-Os modelos ORM vivem em `infrastructure/database/models.py` e **não** são entidades de
-domínio. As camadas `domain`, `application` e `presentation` serão preenchidas nas
-próximas entregas, preservando o isolamento descrito em `docs/ARCHITECTURE.md`.
