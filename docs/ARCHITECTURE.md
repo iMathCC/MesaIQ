@@ -415,7 +415,7 @@ sequenceDiagram
 
 ## 5. Estrutura de Diretórios
 
-### 5.1 Estrutura implementada na Entrega 1
+### 5.1 Estrutura implementada nas Entregas 1 e 2
 
 O projeto adota **src layout** com um pacote instalável chamado `mesaiq`. O diretório
 `src/` não é um pacote Python; o código importável fica exclusivamente em
@@ -449,23 +449,49 @@ mesaiq/
 │       ├── main.py                    # create_app() e entry point
 │       ├── api/
 │       │   ├── __init__.py
-│       │   └── health.py              # Liveness e readiness
-│       ├── domain/                    # Reservado para entidades puras futuras
+│       │   ├── health.py              # Liveness e readiness
+│       │   └── routes/
+│       │       ├── __init__.py
+│       │       └── review_imports.py  # Endpoint de upload e ingestão CSV
+│       ├── application/
+│       │   ├── __init__.py
+│       │   ├── dtos/
+│       │   │   └── import_reviews.py  # DTOs tipados (RawReviewRow, ImportReviewsResult)
+│       │   ├── ports/
+│       │   │   ├── csv_parser.py      # Protocol CsvReviewParser
+│       │   │   ├── repositories.py    # Protocols RestaurantRepo, ReviewRepo, ImportJobRepo
+│       │   │   └── unit_of_work.py    # Protocol UnitOfWork
+│       │   └── use_cases/
+│       │       └── import_reviews.py  # ImportReviewsUseCase
+│       ├── domain/
+│       │   ├── __init__.py
+│       │   ├── entities/              # Dataclasses puras: Restaurant, Review, ImportJob
+│       │   ├── enums/                 # Enums puros: ImportJobStatus
+│       │   └── exceptions/            # Exceções puras de validação e regras de negócio
 │       └── infrastructure/
 │           ├── __init__.py
-│           └── database/
-│               ├── __init__.py
-│               ├── base.py            # Base declarativa e naming convention
-│               ├── models.py          # ORM: Restaurant, Review, ImportJob
-│               └── session.py         # Engine, sessionmaker e dependência FastAPI
+│           ├── database/
+│           │   ├── __init__.py
+│           │   ├── base.py            # Base declarativa e naming convention
+│           │   ├── models.py          # ORM: Restaurant, Review, ImportJob
+│           │   ├── session.py         # Engine, sessionmaker e dependência FastAPI
+│           │   ├── unit_of_work.py    # SqlAlchemyUnitOfWork
+│           │   └── repositories/      # Repositórios assíncronos SQLAlchemy
+│           └── parsers/
+│               └── csv_review_parser.py # Parser CSV com biblioteca padrão csv
 └── tests/
     ├── conftest.py
     ├── unit/
     │   ├── test_config.py
-    │   └── test_database_models.py
+    │   ├── test_database_models.py
+    │   ├── test_domain_entities.py
+    │   ├── test_csv_parser.py
+    │   └── test_use_case_import_reviews.py
     └── integration/
         ├── test_health.py
-        └── test_readiness.py
+        ├── test_readiness.py
+        ├── test_review_imports.py
+        └── test_postgres_integration.py
 ```
 
 ### 5.2 Separação entre ORM e Domain

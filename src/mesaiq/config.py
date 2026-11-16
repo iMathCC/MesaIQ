@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: SecretStr
     log_level: str = "INFO"
+    max_upload_size_bytes: int = 10 * 1024 * 1024  # 10 MB limit for uploads
 
     @field_validator("database_url")
     @classmethod
